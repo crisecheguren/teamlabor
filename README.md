@@ -78,11 +78,14 @@ teamlabor/
 │   └── src/
 │       ├── app/            # App Router pages
 │       │   ├── page.tsx    # Homepage
+│       │   ├── find-your-rep/ # Address lookup for reps
 │       │   ├── politicians/
 │       │   ├── blog/
 │       │   ├── resources/
 │       │   ├── about/
-│       │   └── api/health/
+│       │   └── api/
+│       │       ├── health/
+│       │       └── representatives/
 │       ├── components/
 │       │   ├── ui/         # shadcn/ui components
 │       │   ├── layout/     # Navbar, Footer
@@ -96,9 +99,11 @@ teamlabor/
 
 ### Current
 - Homepage with hero, mission statement, featured grades preview, and call-to-action
+- **Find Your Rep** - Enter your address to find your congressional district and representatives (powered by US Census Geocoder API)
 - Responsive navbar and footer
 - Full database schema for politicians, grades, voting records, donations, blog posts, and resources
 - Docker Compose setup with PostgreSQL and Next.js
+- Hot reloading in development (no rebuild needed for code changes)
 
 ### Planned
 - Politician grading based on labor-friendly voting records
