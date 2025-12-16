@@ -42,6 +42,15 @@ A labor-focused advocacy platform providing politician accountability grades, co
 ### Development Commands
 
 ```bash
+# Run tests
+docker compose exec app npm test
+
+# Run tests in watch mode
+docker compose exec app npm run test:watch
+
+# Run tests with coverage
+docker compose exec app npm run test:coverage
+
 # View logs
 docker compose logs -f app
 
@@ -62,6 +71,7 @@ docker compose exec app sh
 - **Database:** PostgreSQL 16
 - **ORM:** Prisma 5.22.0
 - **Styling:** Tailwind CSS + shadcn/ui
+- **Testing:** Jest + Testing Library
 - **Deployment:** Docker Compose
 
 ## Project Structure
@@ -104,6 +114,7 @@ teamlabor/
 - Full database schema for politicians, grades, voting records, donations, blog posts, and resources
 - Docker Compose setup with PostgreSQL and Next.js
 - Hot reloading in development (no rebuild needed for code changes)
+- **Test coverage** - Comprehensive Jest tests for Census API integration (12 tests covering valid lookups, error handling, and edge cases)
 
 ### Planned
 - Politician grading based on labor-friendly voting records

@@ -22,6 +22,8 @@ services:
       - ./app/postcss.config.mjs:/app/postcss.config.mjs
       - ./app/tsconfig.json:/app/tsconfig.json
       - ./app/next.config.js:/app/next.config.js
+      - ./app/jest.config.ts:/app/jest.config.ts
+      - ./app/jest.setup.ts:/app/jest.setup.ts
       # Persist .next cache for faster rebuilds
       - next-cache:/app/.next
     depends_on:
