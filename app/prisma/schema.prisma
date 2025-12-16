@@ -1,0 +1,276 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// CORE POLITICAL ENTITIES
+// ============================================
+
+model Chamber {
+  id          String       @id @default(cuid())
+  name        String       @unique // "House" or "Senate"
+  politicians Politician[]
+
+  @@map("chambers")
+}
+
+model State {
+  id           String       @id @default(cuid())
+  name         String       @unique
+  abbreviation String       @unique @db.Char(2)
+  politicians  Politician[]
+
+  @@map("states")
+}
+
+model Politician {
+  id             String   @id @default(cuid())
+  bioguideId     String?  @unique @map("bioguide_id") // Congress.gov ID
+  fecId          String?  @map("fec_id") // FEC candidate ID
+  firstName      String   @map("first_name")
+  lastName       String   @map("last_name")
+  party          String // "D", "R", "I"
+  state          State    @relation(fields: [stateId], references: [id])
+  stateId        String   @map("state_id")
+  district       String? // House district number, null for Senate
+  chamber        Chamber  @relation(fields: [chamberId], references: [id])
+  chamberId      String   @map("chamber_id")
+  photoUrl       String?  @map("photo_url")
+  website        String?
+  twitter        String?
+  phone          String?
+  upForElection  Boolean  @default(false) @map("up_for_election")
+  electionYear   Int?     @map("election_year")
+  inOffice       Boolean  @default(true) @map("in_office")
+  termStart      DateTime? @map("term_start")
+  termEnd        DateTime? @map("term_end")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  grades    Grade[]
+  votes     Vote[]
+  donations Donation[]
+  posts     PostPolitician[]
+
+  @@index([party])
+  @@index([stateId])
+  @@index([upForElection])
+  @@map("politicians")
+}
+
+// ============================================
+// GRADING SYSTEM
+// ============================================
+
+model GradeCategory {
+  id          String  @id @default(cuid())
+  name        String  @unique // "Labor Rights", "Wealth Equality", etc.
+  slug        String  @unique
+  description String?
+  weight      Float   @default(1.0) // For weighted overall grade
+  icon        String? // Lucide icon name
+  sortOrder   Int     @default(0) @map("sort_order")
+
+  // Relations
+  grades Grade[]
+  bills  Bill[]
+
+  @@map("grade_categories")
+}
+
+model Grade {
+  id           String        @id @default(cuid())
+  politician   Politician    @relation(fields: [politicianId], references: [id], onDelete: Cascade)
+  politicianId String        @map("politician_id")
+  category     GradeCategory @relation(fields: [categoryId], references: [id])
+  categoryId   String        @map("category_id")
+  letterGrade  String        @map("letter_grade") @db.Char(2) // A+, A, A-, B+, etc.
+  numericScore Float         @map("numeric_score") // 0-100
+  reasoning    String?       @db.Text
+  sessionYear  Int           @map("session_year") // Congressional session
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  @@unique([politicianId, categoryId, sessionYear])
+  @@index([letterGrade])
+  @@map("grades")
+}
+
+// ============================================
+// BILLS & VOTING
+// ============================================
+
+model Bill {
+  id            String         @id @default(cuid())
+  congressNum   Int            @map("congress_num") // e.g., 118
+  billType      String         @map("bill_type") // "hr", "s", "hjres", etc.
+  billNumber    Int            @map("bill_number")
+  title         String
+  shortTitle    String?        @map("short_title")
+  summary       String?        @db.Text
+  laborPosition String?        @map("labor_position") // "support", "oppose", "neutral"
+  category      GradeCategory? @relation(fields: [categoryId], references: [id])
+  categoryId    String?        @map("category_id")
+  importance    Int            @default(1) // 1-5 weight for scoring
+  introducedAt  DateTime?      @map("introduced_at")
+  lastActionAt  DateTime?      @map("last_action_at")
+  status        String? // "passed", "failed", "pending"
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  votes Vote[]
+
+  @@unique([congressNum, billType, billNumber])
+  @@map("bills")
+}
+
+model Vote {
+  id           String     @id @default(cuid())
+  politician   Politician @relation(fields: [politicianId], references: [id], onDelete: Cascade)
+  politicianId String     @map("politician_id")
+  bill         Bill       @relation(fields: [billId], references: [id], onDelete: Cascade)
+  billId       String     @map("bill_id")
+  position     String // "yea", "nay", "abstain", "not_voting"
+  voteDate     DateTime   @map("vote_date")
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  @@unique([politicianId, billId])
+  @@index([position])
+  @@map("votes")
+}
+
+// ============================================
+// CAMPAIGN FINANCE
+// ============================================
+
+model Industry {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  slug         String        @unique
+  description  String?
+  icon         String? // Lucide icon name
+  color        String? // Hex color for charts
+  corporations Corporation[]
+
+  @@map("industries")
+}
+
+model Corporation {
+  id            String     @id @default(cuid())
+  name          String
+  openSecretsId String?    @unique @map("opensecrets_id")
+  industry      Industry   @relation(fields: [industryId], references: [id])
+  industryId    String     @map("industry_id")
+  description   String?
+  logoUrl       String?    @map("logo_url")
+  website       String?
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  donations Donation[]
+
+  @@index([industryId])
+  @@map("corporations")
+}
+
+model Donation {
+  id            String      @id @default(cuid())
+  politician    Politician  @relation(fields: [politicianId], references: [id], onDelete: Cascade)
+  politicianId  String      @map("politician_id")
+  corporation   Corporation @relation(fields: [corporationId], references: [id])
+  corporationId String      @map("corporation_id")
+  amount        Decimal     @db.Decimal(12, 2)
+  donationType  String      @map("donation_type") // "pac", "individual", "super_pac"
+  electionCycle Int         @map("election_cycle") // e.g., 2024
+  date          DateTime?
+  sourceUrl     String?     @map("source_url")
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  @@index([politicianId])
+  @@index([corporationId])
+  @@index([electionCycle])
+  @@map("donations")
+}
+
+// ============================================
+// CONTENT MANAGEMENT
+// ============================================
+
+model Post {
+  id            String           @id @default(cuid())
+  title         String
+  slug          String           @unique
+  content       String           @db.Text
+  excerpt       String?
+  featuredImage String?          @map("featured_image")
+  author        String           @default("Team Labor")
+  status        String           @default("draft") // "draft", "published"
+  publishedAt   DateTime?        @map("published_at")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  tags       PostTag[]
+  politicians PostPolitician[]
+
+  @@index([status])
+  @@index([publishedAt])
+  @@map("posts")
+}
+
+model Tag {
+  id    String    @id @default(cuid())
+  name  String    @unique
+  slug  String    @unique
+  posts PostTag[]
+
+  @@map("tags")
+}
+
+model PostTag {
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId String @map("post_id")
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  tagId  String @map("tag_id")
+
+  @@id([postId, tagId])
+  @@map("post_tags")
+}
+
+model PostPolitician {
+  post         Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId       String     @map("post_id")
+  politician   Politician @relation(fields: [politicianId], references: [id], onDelete: Cascade)
+  politicianId String     @map("politician_id")
+
+  @@id([postId, politicianId])
+  @@map("post_politicians")
+}
+
+model Resource {
+  id           String   @id @default(cuid())
+  title        String
+  description  String?
+  url          String
+  resourceType String   @map("resource_type") // "guide", "legal", "organization", "tool"
+  category     String // "unionizing", "worker_rights", "legal_aid", etc.
+  featured     Boolean  @default(false)
+  sortOrder    Int      @default(0) @map("sort_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([resourceType])
+  @@index([category])
+  @@map("resources")
+}
