@@ -114,7 +114,6 @@ teamlabor/
 - Full database schema for politicians, grades, voting records, donations, blog posts, and resources
 - Docker Compose setup with PostgreSQL and Next.js
 - Hot reloading in development (no rebuild needed for code changes)
-- **Test coverage** - Comprehensive Jest tests for Census API integration (12 tests covering valid lookups, error handling, and edge cases)
 
 ### Planned
 - Politician grading based on labor-friendly voting records
