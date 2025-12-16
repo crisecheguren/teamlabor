@@ -20,18 +20,14 @@ RUN npm ci
 # Generate Prisma client
 RUN npx prisma generate
 
-# Copy application source
+# Copy application source and config
 COPY . .
-
-# Build the application
-ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
 
 EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
-ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Start the application
-CMD ["npm", "run", "start"]
+# Default command (overridden by docker-compose for dev)
+CMD ["npm", "run", "dev"]

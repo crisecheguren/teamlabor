@@ -10,6 +10,20 @@ services:
     environment:
       - DATABASE_URL=postgresql://teamlabor:${DB_PASSWORD}@db:5432/teamlabor
       - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+      - NODE_ENV=development
+      - WATCHPACK_POLLING=true
+    volumes:
+      # Mount source code for hot reloading
+      - ./app/src:/app/src
+      - ./app/public:/app/public
+      - ./app/prisma:/app/prisma
+      # Mount config files
+      - ./app/tailwind.config.ts:/app/tailwind.config.ts
+      - ./app/postcss.config.mjs:/app/postcss.config.mjs
+      - ./app/tsconfig.json:/app/tsconfig.json
+      - ./app/next.config.js:/app/next.config.js
+      # Persist .next cache for faster rebuilds
+      - next-cache:/app/.next
     depends_on:
       db:
         condition: service_healthy
@@ -39,3 +53,6 @@ services:
 networks:
   teamlabor-network:
     driver: bridge
+
+volumes:
+  next-cache:
