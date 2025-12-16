@@ -1,0 +1,43 @@
+services:
+  app:
+    container_name: teamlabor-app
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://teamlabor:${DB_PASSWORD}@db:5432/teamlabor
+      - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-https://teamlabor.org}
+      - NODE_ENV=production
+    command: sh -c "npx prisma migrate deploy && npm run build && npm run start"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - teamlabor-network
+
+  db:
+    container_name: teamlabor-db
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=teamlabor
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=teamlabor
+    volumes:
+      - ./db/data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U teamlabor -d teamlabor"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - teamlabor-network
+
+networks:
+  teamlabor-network:
+    driver: bridge
