@@ -3,8 +3,29 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Search, MapPin, User, Building2, Loader2 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
+
+interface Politician {
+  id: string;
+  bioguideId: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  party: string;
+  state: string;
+  stateAbbr: string;
+  district: string | null;
+  chamber: string;
+  photoUrl: string | null;
+  website: string | null;
+  twitter: string | null;
+  phone: string | null;
+  upForElection: boolean;
+  electionYear: number | null;
+}
 
 interface RepresentativeResult {
   success: boolean;
@@ -24,6 +45,8 @@ interface RepresentativeResult {
     stateAbbr: string;
   };
   error?: string;
+  representative?: Politician;
+  stateSenators?: Politician[];
 }
 
 interface AddressForm {
@@ -164,12 +187,38 @@ export default function FindYourRepPage() {
     const fullAddress = `${formData.street.trim()}, ${formData.city.trim()}, ${formData.state} ${formData.zip.trim()}`;
 
     try {
+      // First, get the district info from Census API
       const response = await fetch(
         `/api/representatives?address=${encodeURIComponent(fullAddress)}`
       );
       const data: RepresentativeResult = await response.json();
 
       if (data.success) {
+        // Now fetch the actual politicians from our database
+        if (data.district) {
+          // Fetch House representative
+          const repResponse = await fetch(
+            `/api/politicians?state=${data.district.stateAbbr}&chamber=house&district=${data.district.districtNumber}`
+          );
+          const repData = await repResponse.json();
+
+          if (repData.success && repData.politicians.length > 0) {
+            data.representative = repData.politicians[0];
+          }
+        }
+
+        if (data.senators) {
+          // Fetch both Senators
+          const senResponse = await fetch(
+            `/api/politicians?state=${data.senators.stateAbbr}&chamber=senate`
+          );
+          const senData = await senResponse.json();
+
+          if (senData.success && senData.politicians.length > 0) {
+            data.stateSenators = senData.politicians;
+          }
+        }
+
         setResult(data);
       } else {
         setApiError(data.error || "Something went wrong");
@@ -376,25 +425,76 @@ export default function FindYourRepPage() {
                     </p>
                   </div>
                 </div>
-                <div className="rounded-lg border bg-muted/50 p-4">
-                  <p className="mb-2 text-sm text-muted-foreground">
-                    Your representative serves in the U.S. House of
-                    Representatives for {result.district.state}&apos;s{" "}
-                    {result.district.districtNumber === "At-Large"
-                      ? "at-large seat"
-                      : `${result.district.districtNumber}${getOrdinalSuffix(
-                          parseInt(result.district.districtNumber)
-                        )} congressional district`}
-                    .
-                  </p>
-                  <Button asChild variant="outline" size="sm">
-                    <Link
-                      href={`/politicians?state=${result.district.stateAbbr}&chamber=house&district=${result.district.districtNumber}`}
-                    >
-                      View Representative&apos;s Grade
-                    </Link>
-                  </Button>
-                </div>
+
+                {result.representative ? (
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-4">
+                      {result.representative.photoUrl && (
+                        <Image
+                          src={result.representative.photoUrl}
+                          alt={result.representative.fullName}
+                          width={80}
+                          height={98}
+                          className="h-auto w-20 rounded border"
+                        />
+                      )}
+                      <div className="flex-1">
+                        <h3 className="mb-1 text-lg font-semibold">
+                          {result.representative.fullName}
+                        </h3>
+                        <div className="mb-2 flex flex-wrap gap-2">
+                          <Badge
+                            variant="outline"
+                            className={
+                              result.representative.party === "D"
+                                ? "bg-blue-50 text-blue-700"
+                                : result.representative.party === "R"
+                                  ? "bg-red-50 text-red-700"
+                                  : "bg-purple-50 text-purple-700"
+                            }
+                          >
+                            {result.representative.party === "D"
+                              ? "Democrat"
+                              : result.representative.party === "R"
+                                ? "Republican"
+                                : "Independent"}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Represents {result.district.state}&apos;s{" "}
+                          {result.district.districtNumber === "At-Large"
+                            ? "at-large seat"
+                            : `${result.district.districtNumber}${getOrdinalSuffix(
+                                parseInt(result.district.districtNumber)
+                              )} congressional district`}
+                        </p>
+                      </div>
+                    </div>
+                    <Button asChild variant="labor" size="sm" className="w-full">
+                      <Link
+                        href={`/politicians/${result.representative.bioguideId}`}
+                      >
+                        View Full Profile & Grades
+                      </Link>
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border bg-muted/50 p-4">
+                    <p className="mb-2 text-sm text-muted-foreground">
+                      Your representative serves in the U.S. House of
+                      Representatives for {result.district.state}&apos;s{" "}
+                      {result.district.districtNumber === "At-Large"
+                        ? "at-large seat"
+                        : `${result.district.districtNumber}${getOrdinalSuffix(
+                            parseInt(result.district.districtNumber)
+                          )} congressional district`}
+                      .
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Representative data not yet available in our database.
+                    </p>
+                  </div>
+                )}
               </Card>
             )}
 
@@ -414,19 +514,72 @@ export default function FindYourRepPage() {
                     </p>
                   </div>
                 </div>
-                <div className="rounded-lg border bg-muted/50 p-4">
-                  <p className="mb-2 text-sm text-muted-foreground">
-                    {result.senators.state} has two U.S. Senators who represent
-                    the entire state.
-                  </p>
-                  <Button asChild variant="outline" size="sm">
-                    <Link
-                      href={`/politicians?state=${result.senators.stateAbbr}&chamber=senate`}
-                    >
-                      View Senators&apos; Grades
-                    </Link>
-                  </Button>
-                </div>
+
+                {result.stateSenators && result.stateSenators.length > 0 ? (
+                  <div className="space-y-4">
+                    {result.stateSenators.map((senator) => (
+                      <div key={senator.id} className="space-y-3">
+                        <div className="flex items-start gap-4">
+                          {senator.photoUrl && (
+                            <Image
+                              src={senator.photoUrl}
+                              alt={senator.fullName}
+                              width={80}
+                              height={98}
+                              className="h-auto w-20 rounded border"
+                            />
+                          )}
+                          <div className="flex-1">
+                            <h3 className="mb-1 text-lg font-semibold">
+                              {senator.fullName}
+                            </h3>
+                            <div className="mb-2 flex flex-wrap gap-2">
+                              <Badge
+                                variant="outline"
+                                className={
+                                  senator.party === "D"
+                                    ? "bg-blue-50 text-blue-700"
+                                    : senator.party === "R"
+                                      ? "bg-red-50 text-red-700"
+                                      : "bg-purple-50 text-purple-700"
+                                }
+                              >
+                                {senator.party === "D"
+                                  ? "Democrat"
+                                  : senator.party === "R"
+                                    ? "Republican"
+                                    : "Independent"}
+                              </Badge>
+                              {senator.upForElection && (
+                                <Badge variant="outline" className="bg-amber-50 text-amber-700">
+                                  Up for re-election {senator.electionYear}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              U.S. Senator from {senator.state}
+                            </p>
+                          </div>
+                        </div>
+                        <Button asChild variant="outline" size="sm" className="w-full">
+                          <Link href={`/politicians/${senator.bioguideId}`}>
+                            View Full Profile & Grades
+                          </Link>
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border bg-muted/50 p-4">
+                    <p className="mb-2 text-sm text-muted-foreground">
+                      {result.senators.state} has two U.S. Senators who represent
+                      the entire state.
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Senator data not yet available in our database.
+                    </p>
+                  </div>
+                )}
               </Card>
             )}
 
