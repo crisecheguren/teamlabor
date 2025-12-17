@@ -33,7 +33,7 @@ export function HeroSection() {
           {/* CTA buttons */}
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Button variant="labor" size="xl" asChild>
-              <Link href="/politicians">
+              <Link href="/find-your-rep">
                 Find Your Rep
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>

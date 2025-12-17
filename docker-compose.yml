@@ -12,11 +12,14 @@ services:
       - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
       - NODE_ENV=development
       - WATCHPACK_POLLING=true
+      - CONGRESS_API_KEY=${CONGRESS_API_KEY}
+      - OPENSECRETS_API_KEY=${OPENSECRETS_API_KEY}
     volumes:
       # Mount source code for hot reloading
       - ./app/src:/app/src
       - ./app/public:/app/public
       - ./app/prisma:/app/prisma
+      - ./app/scripts:/app/scripts
       # Mount config files
       - ./app/tailwind.config.ts:/app/tailwind.config.ts
       - ./app/postcss.config.mjs:/app/postcss.config.mjs
