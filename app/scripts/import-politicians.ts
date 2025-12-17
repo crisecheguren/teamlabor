@@ -231,17 +231,24 @@ function getElectionYear(chamber: string, terms?: { item: Array<{ startYear: num
   if (!terms || !terms.item || terms.item.length === 0) return null;
 
   const mostRecentTerm = terms.item[terms.item.length - 1];
+  const currentYear = new Date().getFullYear();
 
   if (chamber === 'Senate') {
     // Senators serve 6-year terms
     const startYear = mostRecentTerm.startYear;
-    const estimatedEndYear = mostRecentTerm.endYear || (startYear + 6);
-    return estimatedEndYear;
+    let termEndYear = mostRecentTerm.endYear || (startYear + 6);
+
+    // If term already ended, calculate next election cycle
+    while (termEndYear < currentYear) {
+      termEndYear += 6;
+    }
+
+    return termEndYear;
   } else {
-    // House members serve 2-year terms
-    const startYear = mostRecentTerm.startYear;
-    const estimatedEndYear = mostRecentTerm.endYear || (startYear + 2);
-    return estimatedEndYear;
+    // House members serve 2-year terms, all seats up every election
+    // Next House election is always the next even year
+    const nextElection = currentYear % 2 === 0 ? currentYear : currentYear + 1;
+    return nextElection;
   }
 }
 
